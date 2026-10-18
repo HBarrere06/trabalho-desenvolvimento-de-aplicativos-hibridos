@@ -25,6 +25,14 @@ export function dateToUnixSeconds(date: string): number {
   return Date.UTC(year, month - 1, day) / 1000;
 }
 
+/** Convert a YYYY-MM-DDTHH:mm[:ss] UTC value to Unix seconds. */
+export function dateTimeToUnixSeconds(dateTime: string): number {
+  const [date, time] = dateTime.split("T");
+  const [hours, minutes, seconds = 0] = time.split(":").map(Number);
+
+  return dateToUnixSeconds(date) + hours * 60 * 60 + minutes * 60 + seconds;
+}
+
 /** Get the exclusive UTC timestamp for the day after the selected end date. */
 export function dateAfterToUnixSeconds(date: string): number {
   return dateToUnixSeconds(date) + 24 * 60 * 60;

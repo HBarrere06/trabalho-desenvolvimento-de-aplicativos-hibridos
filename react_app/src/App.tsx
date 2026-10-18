@@ -9,9 +9,12 @@ import InfoPanel from "./components/InfoPanel";
 import DateRangePicker from "./components/DateRangePicker";
 
 export default function App() {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const { planes, loading, refresh, lastUpdatedAt } = usePlanes(startDate, endDate);
+  const [startDateTime, setStartDateTime] = useState("");
+  const [endDateTime, setEndDateTime] = useState("");
+  const { planes, loading, refresh, lastUpdatedAt } = usePlanes(
+    startDateTime,
+    endDateTime,
+  );
   const { airports, error: airportsError } = useAirports();
   const [selection, setSelection] = useState<Selection | null>(null);
   const [focus, setFocus] = useState<FocusRequest | null>(null);
@@ -87,9 +90,9 @@ export default function App() {
 
         <div className="flex items-center justify-center gap-2.5 max-[800px]:flex-wrap">
           <DateRangePicker
-            onApply={(start, end) => {
-              setStartDate(start);
-              setEndDate(end);
+            onApply={(startDateTime, endDateTime) => {
+              setStartDateTime(startDateTime);
+              setEndDateTime(endDateTime);
             }}
           />
           <SearchBox options={searchOptions} onSelect={handleSearchSelect} />
