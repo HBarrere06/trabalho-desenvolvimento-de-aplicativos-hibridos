@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { CalendarDays } from "lucide-react";
 
 interface DateRangePickerProps {
   onApply: (startDateTime: string, endDateTime: string) => void;
@@ -25,7 +26,7 @@ export default function DateRangePicker({
   function timeToSeconds(time: string, fallback: number): number {
     if (!time) return fallback;
     const [hours, minutes, seconds = "0"] = time.split(":").map(Number);
-    return hours * 60 * 60 + minutes * 60 + seconds;
+    return hours * 60 * 60 + minutes * 60 + Number(seconds);
   }
 
   function handleApply() {
@@ -43,9 +44,12 @@ export default function DateRangePicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="h-11 rounded-md border border-gray-300 bg-white px-4 text-[15px] shadow-sm hover:bg-gray-100 active:bg-gray-200"
+        className="flex h-11 w-11 items-center justify-center rounded-md border border-gray-300 bg-white text-[#0d47ff] shadow-sm hover:bg-gray-100 active:bg-gray-200"
+        aria-label="Selecionar período"
+        title="Selecionar período"
+        aria-expanded={isOpen}
       >
-        Selecionar período
+        <CalendarDays className="h-5 w-5" aria-hidden="true" />
       </button>
 
       {isOpen && (

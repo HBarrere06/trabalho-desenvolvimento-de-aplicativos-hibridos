@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dateTimeToUnixSeconds, formatTimestamp } from "./format";
-import { getHeading, makeCircle } from "./geo";
+import { getHeading, getHeadingToAveragePoint, makeCircle } from "./geo";
 import { normalizePlanes } from "./planes";
 
 describe("ports match the Python implementation", () => {
@@ -8,6 +8,64 @@ describe("ports match the Python implementation", () => {
     expect(getHeading([[-23.25, -46.7], [-22.9, -47.05]])).toBeCloseTo(317.31745127140067, 9);
     expect(getHeading([[-15.5, -47.6], [-15.84, -47.9]])).toBeCloseTo(220.30944884893216, 9);
     expect(getHeading([[1, 1]])).toBe(0);
+  });
+  it("heading toward the average of the next three predicted points", () => {
+    expect(
+      getHeadingToAveragePoint(
+        [0, 0],
+        [
+          [0, 1],
+          [1, 1],
+          [1, 2],
+          [50, 50],
+        ],
+      ),
+    ).toBeCloseTo(getHeading([[0, 0], [2 / 3, 4 / 3]]), 9);
+  });
+  it("uses predicted points to set the plane heading", () => {
+    const [plane] = normalizePlanes([
+      {
+        icao: "abc123",
+        callsign: "TEST",
+        trajectory: [
+          { timestamp: 1, lat: 0, lon: 0, pred: false },
+          { timestamp: 2, lat: 0, lon: 1, pred: false },
+          { timestamp: 3, lat: 0, lon: 2, pred: true },
+          { timestamp: 4, lat: 1, lon: 2, pred: true },
+          { timestamp: 5, lat: 1, lon: 3, pred: true },
+        ],
+      },
+    ]);
+
+    expect(plane.heading).toBeCloseTo(
+      getHeadingToAveragePoint([0, 1], [
+        [0, 2],
+        [1, 2],
+        [1, 3],
+      ]),
+      9,
+    );
+  });
+  it("uses the previous heading calculation when there are no predicted points", () => {
+    const routePoints: [number, number][] = [
+      [-23.25, -46.7],
+      [-22.9, -47.05],
+    ];
+    const [plane] = normalizePlanes([
+      {
+        icao: "abc123",
+        callsign: "TEST",
+        trajectory: routePoints.map(([lat, lon], index) => ({
+          timestamp: index + 1,
+          lat,
+          lon,
+          pred: false,
+        })),
+      },
+    ]);
+
+    expect(plane.predPoints).toEqual([]);
+    expect(plane.heading).toBeCloseTo(getHeading(routePoints), 9);
   });
   it("circle", () => {
     const c = makeCircle(-22.4, -47.5);

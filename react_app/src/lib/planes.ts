@@ -1,5 +1,5 @@
 import type { Plane, RawPlane } from "../types";
-import { getHeading, makeCircle } from "./geo";
+import { getHeading, getHeadingToAveragePoint, makeCircle } from "./geo";
 import {
   dateToUnixSeconds,
   dateTimeToUnixSeconds,
@@ -98,7 +98,10 @@ export function normalizePlanes(
         searchArea: last
           ? makeCircle(last[0], last[1], 0.08)
           : null,
-        heading: getHeading(routePoints),
+        heading:
+          last && predPoints.length > 0
+            ? getHeadingToAveragePoint(last, predPoints)
+            : getHeading(routePoints),
       };
     });
 }
