@@ -57,6 +57,7 @@ struct ADSBMessage
 };
 std::vector<ADSBMessage> adsb_messages;
 std::mutex ADSB_messages_mutex;
+std::vector<std::string> adsb_lora_messages;
 
 //==========================================================================================
 // FUNCOES
@@ -636,43 +637,60 @@ void lora_thread(int id)
             }
         }
 
-        char buffer_can[3];
-        std::string data_can = "";
+        { // mutex
+            char buffer_can[3];
+            std::string data_can = "";
 
-        for (int i = 0; i < 8; i++) 
-        {
-            snprintf(buffer_can, sizeof(buffer_can), "%02X", data_tx[i]);
-            data_can += buffer_can;
+            for (int i = 0; i < 8; i++) 
+            {
+                snprintf(buffer_can, sizeof(buffer_can), "%02X", data_tx[i]);
+                data_can += buffer_can;
+            }
+            // std::cout << "TC CAN: " << data_can << std::endl;
+            std::lock_guard<std::mutex> lock(can_messages_mutex);
+            can_messages.push_back({to_hex(frames[i].can_id), data_can, timestamp_can});
+            // tc can 0xf800
+            sprintf(command_at,"AT+SEND=250:[\"%X:%02X%02X%02X%02X%02X%02X%02X%02X\"", can_id_tx, data_tx[0], data_tx[1], data_tx[2], data_tx[3], data_tx[4], data_tx[5], data_tx[6], data_tx[7]);
+
+            sprintf(command_at,"%s]",command_at);
+            sendATCommand(command_at , serial_port);
+            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            sendATCommand("AT+RECVB=?", serial_port);
+            std::this_thread::sleep_for(std::chrono::milliseconds(3000));
         }
-        // std::cout << "TC CAN: " << data_can << std::endl;
-        std::lock_guard<std::mutex> lock(can_messages_mutex);
-        can_messages.push_back({to_hex(frames[i].can_id), data_can, timestamp_can});
-        // tc can 0xf800
-        sprintf(command_at,"AT+SEND=250:[\"%X:%02X%02X%02X%02X%02X%02X%02X%02X\"", can_id_tx, data_tx[0], data_tx[1], data_tx[2], data_tx[3], data_tx[4], data_tx[5], data_tx[6], data_tx[7]);
 
-        sprintf(command_at,"%s]",command_at);
-        sendATCommand(command_at , serial_port);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-        sendATCommand("AT+RECVB=?", serial_port);
-        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+        if (!adsb_lora_messages.empty())
+        {
+            std::lock_guard<std::mutex> lock(ADSB_messages_mutex);
 
-        // envia lora ADSB
-        // std::cout << response_ADSB << std::endl;
-        can_id_tx = 0x000600C9;
-        response_ADSB_high = response_ADSB.substr( 0, 14);
-        // std::cout <<response_ADSB_high << std::endl;
-        response_ADSB_low  = response_ADSB.substr(14, 27);
-        // std::cout <<response_ADSB_low << std::endl;
+            // std::cout << "lista adsb: ";
+            // for (const std::string message : adsb_lora_messages)
+            // {
+            //     printf("{%s} ", message.c_str());
+            // }
+            // std::cout << std::endl;
 
-        sprintf(command_at,"AT+SEND=250:[\"%X:%s\"", can_id_tx, response_ADSB_high.c_str());
-        can_id_tx = 0x000600CA; //
-        sprintf(command_at,"%s,\"%X:%s\"",command_at, can_id_tx, response_ADSB_low.c_str());
+            std::string response_ADSB_vector = adsb_lora_messages.front();
+            adsb_lora_messages.erase(adsb_lora_messages.begin());
+            // Repetir as duas linhas acima para obter o próximo ADS-B da lista
 
-        sprintf(command_at,"%s]",command_at);
-        sendATCommand(command_at , serial_port);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-        sendATCommand("AT+RECVB=?", serial_port);
-        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+            // envia lora ADSB
+            can_id_tx = 0x000600C9;
+            response_ADSB_high = response_ADSB_vector.substr(0, 14);
+            // std::cout <<response_ADSB_high << std::endl;
+            response_ADSB_low  = response_ADSB_vector.substr(14, 27);
+            // std::cout <<response_ADSB_low << std::endl;
+
+            sprintf(command_at,"AT+SEND=250:[\"%X:%s\"", can_id_tx, response_ADSB_high.c_str());
+            can_id_tx = 0x000600CA; //
+            sprintf(command_at,"%s,\"%X:%s\"",command_at, can_id_tx, response_ADSB_low.c_str());
+
+            sprintf(command_at,"%s]",command_at);
+            sendATCommand(command_at , serial_port);
+            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            sendATCommand("AT+RECVB=?", serial_port);
+            std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+        }
 
         ciclos++;
     }
@@ -753,6 +771,7 @@ void ADSB_thread(int id)
                 ).count();
 
                 adsb_messages.push_back({response_ADSB, timestamp_adsb});
+                adsb_lora_messages.push_back(response_ADSB);
             }
         } 
 
