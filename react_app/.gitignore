@@ -3,7 +3,6 @@ dist
 .env
 .env.local
 package-lock.json
-package.json
 tsconfig*
 vite.config.ts
 response.json
