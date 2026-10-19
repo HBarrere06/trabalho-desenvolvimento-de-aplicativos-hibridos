@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   Marker,
@@ -165,6 +165,42 @@ export default function PlaneMap({
             );
           })}
       </Pane>
+
+      {layerVisibility.allRoutes &&
+        plottable
+          .filter((p) => p.icao !== selectedPlane?.icao)
+          .map((p) => {
+            const dimmed = selectedPlane !== null;
+            return (
+              <Fragment key={`route-${p.icao}`}>
+                {layerVisibility.traveledRoute && (
+                  <Polyline
+                    positions={p.routePoints}
+                    interactive={false}
+                    pathOptions={{
+                      color: "blue",
+                      weight: dimmed ? 2 : 3,
+                      opacity: dimmed ? 0.12 : 0.7,
+                    }}
+                  />
+                )}
+                {layerVisibility.predictedRoute && p.predPoints.length > 0 && (
+                  <Polyline
+                    positions={p.predPoints}
+                    interactive={false}
+                    pathOptions={{
+                      color: "#6b7280",
+                      weight: dimmed ? 1.5 : 2,
+                      opacity: dimmed ? 0.12 : 0.8,
+                      dashArray: "6, 8",
+                    }}
+                  />
+                )}
+              </Fragment>
+            );
+          }
+        )
+      }
 
       {selectedPlane && (
         <>

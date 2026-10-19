@@ -38,6 +38,7 @@ export interface MapLayerVisibility {
   predictedRoute: boolean;
   traveledRoute: boolean;
   searchAreas: boolean;
+  allRoutes: boolean;
 }
 
 export type Selection =

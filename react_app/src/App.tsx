@@ -16,6 +16,7 @@ const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
   predictedRoute: true,
   traveledRoute: true,
   searchAreas: true,
+  allRoutes: false,
 };
 
 export default function App() {

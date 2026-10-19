@@ -13,6 +13,7 @@ const LAYERS: { key: keyof MapLayerVisibility; label: string }[] = [
   { key: "predictedRoute", label: "Trajeto previsto" },
   { key: "traveledRoute", label: "Trajeto percorrido" },
   { key: "searchAreas", label: "Áreas de busca" },
+  { key: "allRoutes", label: "Todos os trajetos" },
 ];
 
 export default function MapLayerFilter({ visibility, onChange }: Props) {
