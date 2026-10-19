@@ -23,6 +23,21 @@ export function getHeading(points: LatLon[]): number {
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
+/** Bearing from a point to the average of the next three points. */
+export function getHeadingToAveragePoint(
+  origin: LatLon,
+  points: LatLon[],
+): number {
+  const nextPoints = points.slice(0, 3);
+  if (nextPoints.length === 0) return 0;
+
+  const average: LatLon = [
+    nextPoints.reduce((sum, [lat]) => sum + lat, 0) / nextPoints.length,
+    nextPoints.reduce((sum, [, lon]) => sum + lon, 0) / nextPoints.length,
+  ];
+  return getHeading([origin, average]);
+}
+
 /** Circle polygon around a point, radius in degrees. Port of `_make_circle`. */
 export function makeCircle(
   lat: number,

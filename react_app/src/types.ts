@@ -32,6 +32,14 @@ export interface Airport {
   lon: number;
 }
 
+export interface MapLayerVisibility {
+  planes: boolean;
+  airports: boolean;
+  predictedRoute: boolean;
+  traveledRoute: boolean;
+  searchAreas: boolean;
+}
+
 export type Selection =
   | { kind: "plane"; plane: Plane }
   | { kind: "airport"; airport: Airport };

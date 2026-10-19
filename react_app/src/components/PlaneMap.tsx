@@ -10,7 +10,7 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
-import type { Airport, Plane, Selection } from "../types";
+import type { Airport, MapLayerVisibility, Plane, Selection } from "../types";
 import { findNearbyAirport } from "../lib/airports";
 import { airportIcon, planeIcon } from "./icons";
 
@@ -92,6 +92,7 @@ interface Props {
   airports: Airport[];
   selection: Selection | null;
   focus: FocusRequest | null;
+  layerVisibility: MapLayerVisibility;
   onSelectPlane: (plane: Plane) => void;
   onSelectAirport: (airport: Airport) => void;
   onClearSelection: () => void;
@@ -102,6 +103,7 @@ export default function PlaneMap({
   airports,
   selection,
   focus,
+  layerVisibility,
   onSelectPlane,
   onSelectAirport,
   onClearSelection,
@@ -136,49 +138,55 @@ export default function PlaneMap({
       <EmptyMapClickHandler onClear={onClearSelection} />
 
       <Pane name="airportMarkers" style={{ zIndex: 610 }}>
-        <AirportMarkers
-          airports={originAirports}
-          onSelectAirport={onSelectAirport}
-        />
+        {layerVisibility.airports && (
+          <AirportMarkers
+            airports={originAirports}
+            onSelectAirport={onSelectAirport}
+          />
+        )}
       </Pane>
 
       <Pane name="planeMarkers" style={{ zIndex: 620 }}>
-        {plottable.map((p) => {
-          const last = p.routePoints[p.routePoints.length - 1];
-          return (
-            <Marker
-              key={`plane-${p.icao}`}
-              position={last}
-              icon={planeIcon(
-                p.heading,
-                selectedPlane !== null && selectedPlane.icao !== p.icao,
-              )}
-              eventHandlers={{ click: () => onSelectPlane(p) }}
-            >
-              <Tooltip>{p.icao}</Tooltip>
-            </Marker>
-          );
-        })}
+        {layerVisibility.planes &&
+          plottable.map((p) => {
+            const last = p.routePoints[p.routePoints.length - 1];
+            return (
+              <Marker
+                key={`plane-${p.icao}`}
+                position={last}
+                icon={planeIcon(
+                  p.heading,
+                  selectedPlane !== null && selectedPlane.icao !== p.icao,
+                )}
+                eventHandlers={{ click: () => onSelectPlane(p) }}
+              >
+                <Tooltip>{p.icao}</Tooltip>
+              </Marker>
+            );
+          })}
       </Pane>
 
       {selectedPlane && (
         <>
-          <Polyline
-            positions={selectedPlane.routePoints}
-            pathOptions={{ color: "blue", weight: 5, opacity: 0.8 }}
-          />
-          {selectedPlane.predPoints.length > 0 && (
+          {layerVisibility.traveledRoute && (
             <Polyline
-              positions={selectedPlane.predPoints}
-              pathOptions={{
-                color: "#6b7280",
-                weight: 3,
-                opacity: 0.9,
-                dashArray: "6, 8",
-              }}
+              positions={selectedPlane.routePoints}
+              pathOptions={{ color: "blue", weight: 5, opacity: 0.8 }}
             />
           )}
-          {selectedPlane.searchArea && (
+          {layerVisibility.predictedRoute &&
+            selectedPlane.predPoints.length > 0 && (
+              <Polyline
+                positions={selectedPlane.predPoints}
+                pathOptions={{
+                  color: "#6b7280",
+                  weight: 3,
+                  opacity: 0.9,
+                  dashArray: "6, 8",
+                }}
+              />
+            )}
+          {layerVisibility.searchAreas && selectedPlane.searchArea && (
             <Polygon
               positions={selectedPlane.searchArea}
               pathOptions={{

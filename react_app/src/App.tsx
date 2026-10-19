@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { RotateCw } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
-import type { Airport, Plane, Selection } from "./types";
+import type { Airport, MapLayerVisibility, Plane, Selection } from "./types";
 import { useAirports, usePlanes } from "./hooks/useData";
 import PlaneMap, { type FocusRequest } from "./components/PlaneMap";
 import SearchBox from "./components/SearchBox";
 import InfoPanel from "./components/InfoPanel";
 import DateRangePicker from "./components/DateRangePicker";
+import MapLayerFilter from "./components/MapLayerFilter";
+
+const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
+  planes: true,
+  airports: true,
+  predictedRoute: true,
+  traveledRoute: true,
+  searchAreas: true,
+};
 
 export default function App() {
   const [startDateTime, setStartDateTime] = useState("");
@@ -17,6 +27,7 @@ export default function App() {
   );
   const { airports, error: airportsError } = useAirports();
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [layerVisibility, setLayerVisibility] = useState(DEFAULT_LAYER_VISIBILITY);
   const [focus, setFocus] = useState<FocusRequest | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -80,34 +91,44 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col gap-2.5 bg-gray-200 p-2.5 font-[Arial,sans-serif] text-gray-800">
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5 max-[800px]:grid-cols-1">
-        <button
-          className="h-11 min-w-[190px] justify-self-start rounded-[18px] border-2 border-gray-300 bg-white px-[22px] text-[15px] font-bold text-black hover:bg-gray-100 active:bg-gray-200 disabled:cursor-default disabled:bg-gray-100 max-[800px]:min-w-0 max-[800px]:justify-self-center"
-          onClick={refresh}
-          disabled={loading}
-        >
-          {loading ? "Atualizando..." : "Atualizar dados"}
-        </button>
+        <div className="flex items-center gap-2.5 max-[800px]:justify-center">
+          <button
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white text-[#0d47ff] hover:bg-gray-100 active:bg-gray-200 disabled:cursor-default disabled:bg-gray-100"
+            onClick={refresh}
+            disabled={loading}
+            aria-label={loading ? "Atualizando dados" : "Atualizar dados"}
+            title={loading ? "Atualizando dados" : "Atualizar dados"}
+          >
+            <RotateCw
+              className={`h-5 w-5 ${loading ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+          <span
+            className="whitespace-nowrap text-sm text-gray-600 max-[800px]:text-xs"
+            aria-live="polite"
+          >
+            {minutesSinceUpdate === null
+              ? "Aguardando atualização"
+              : minutesSinceUpdate === 0
+                ? "Atualizado agora"
+                : `Atualizado há ${minutesSinceUpdate} ${minutesSinceUpdate === 1 ? "minuto" : "minutos"}`}
+          </span>
+        </div>
 
-        <div className="flex items-center justify-center gap-2.5 max-[800px]:flex-wrap">
+        <div className="flex items-center gap-2.5 justify-self-center">
+          <SearchBox options={searchOptions} onSelect={handleSearchSelect} />
           <DateRangePicker
             onApply={(startDateTime, endDateTime) => {
               setStartDateTime(startDateTime);
               setEndDateTime(endDateTime);
             }}
           />
-          <SearchBox options={searchOptions} onSelect={handleSearchSelect} />
+          <MapLayerFilter
+            visibility={layerVisibility}
+            onChange={setLayerVisibility}
+          />
         </div>
-
-        <span
-          className="justify-self-end whitespace-nowrap text-right text-sm text-gray-600 max-[800px]:justify-self-center max-[800px]:text-xs"
-          aria-live="polite"
-        >
-          {minutesSinceUpdate === null
-            ? "Aguardando atualização"
-            : minutesSinceUpdate === 0
-              ? "Atualizado agora"
-              : `Atualizado há ${minutesSinceUpdate} ${minutesSinceUpdate === 1 ? "minuto" : "minutos"}`}
-        </span>
       </header>
 
       {airportsError && (
@@ -126,6 +147,7 @@ export default function App() {
           airports={airports}
           selection={currentSelection}
           focus={focus}
+          layerVisibility={layerVisibility}
           onSelectPlane={(p) => selectPlane(p)}
           onSelectAirport={selectAirport}
           onClearSelection={() => setSelection(null)}
