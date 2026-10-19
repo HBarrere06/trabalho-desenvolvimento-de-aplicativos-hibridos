@@ -1,6 +1,10 @@
 import type { Plane, RawPlane } from "../types";
 import { getHeading, makeCircle } from "./geo";
-import { dateToUnixSeconds, dateAfterToUnixSeconds } from "./format";
+import {
+  dateToUnixSeconds,
+  dateTimeToUnixSeconds,
+  dateAfterToUnixSeconds,
+} from "./format";
 
 const env = import.meta.env;
 
@@ -48,11 +52,16 @@ export function normalizePlanes(
   endDate?: string,
 ): Plane[] {
   const startTimestamp = startDate
-    ? dateToUnixSeconds(startDate)
+    ? startDate.includes("T")
+      ? dateTimeToUnixSeconds(startDate)
+      : dateToUnixSeconds(startDate)
     : undefined;
 
   const endTimestamp = endDate
-    ? dateAfterToUnixSeconds(endDate)
+    ? endDate.includes("T")
+      ? dateTimeToUnixSeconds(endDate) +
+        (endDate.split("T")[1].split(":").length >= 3 ? 1 : 60)
+      : dateAfterToUnixSeconds(endDate)
     : undefined;
 
   return raw
