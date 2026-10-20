@@ -17,9 +17,9 @@ from supabase import create_client, Client
 
 # These settings follow the prediction notebook. Predictions are generated at
 # 10-second intervals and extend 3 steps beyond the latest real position.
-N_PREDICTED_STEPS = 3
+N_PREDICTED_STEPS = 1
 STEP_SECONDS = 10
-MAX_TRAINING_SAMPLES = 1_000_000
+MAX_TRAINING_SAMPLES = 2_000_000
 
 
 def fetch_all_rows(table_name):
@@ -215,6 +215,15 @@ def _number(value):
         return result if np.isfinite(result) else None
     except (TypeError, ValueError):
         return None
+    
+    
+def normalize_icao(value):
+    """Normalize ICAO24 identifiers to uppercase."""
+    if value is None:
+        return None
+
+    value = str(value).strip()
+    return value.upper() if value else None
 
 
 def predict_and_store_trajectories(model, scaler):
@@ -224,7 +233,7 @@ def predict_and_store_trajectories(model, scaler):
     skipped_count = 0
 
     for row in trajectory_rows:
-        icao = row.get("icao") or row.get("icao24")
+        icao = normalize_icao(row.get("icao") or row.get("icao24"))
         callsign = row.get("callsign")
         raw_trajectory = row.get("trajectory")
 
@@ -407,7 +416,7 @@ class ADSBClient:
         self.buffers = {}    # ICAO -> list of pending messages
 
         # ICAO -> latest even/odd CPR position messages
-        self.cpr_cache = {}
+        # self.cpr_cache = {}
 
     def mark_message(self, message, error=False, reason=""):
         """Update message status in Supabase."""
@@ -551,7 +560,7 @@ class ADSBClient:
                     )
                     continue
 
-                icao = pms.adsb.icao(msg)
+                icao = normalize_icao(pms.adsb.icao(msg))
                 tc = pms.adsb.typecode(msg)
 
                 # --- CALLSIGN: TYPE CODES 1-4 ---
@@ -584,63 +593,26 @@ class ADSBClient:
 
                 # --- POSITION: TYPE CODES 5-18 ---
                 if 5 <= tc <= 18:
-                    # CPR decoding requires a matching even/odd pair.
-                    # Surface messages (TC 5-8) need a reference position.
-                    is_odd = pms.adsb.oe_flag(msg)
-
-                    aircraft_cpr = self.cpr_cache.setdefault(
-                        icao,
-                        {"even": None, "odd": None}
+                    # Decode a single message against the receiver's location.
+                    # Airborne (TC 9-18) must be within ~180 NM of the reference,
+                    # surface (TC 5-8) within ~45 NM.
+                    lat, lon = pms.adsb.position_with_ref(
+                        msg, det_coords[0], det_coords[1]
                     )
 
-                    entry = {
-                        "msg": msg,
-                        "timestamp": timestamp,
-                        "altitude": (
-                            pms.adsb.altitude(msg)
-                            if 9 <= tc <= 18
-                            else None
-                        ),
-                        "msg_id": message["id"]
-                    }
-
-                    key = "odd" if is_odd else "even"
-                    aircraft_cpr[key] = entry
-
-                    even = aircraft_cpr["even"]
-                    odd = aircraft_cpr["odd"]
-
-                    # Wait until both CPR formats are available.
-                    if even is None or odd is None:
+                    if lat is None or lon is None:
+                        self.mark_message(
+                            message,
+                            error=True,
+                            reason="Could not decode position"
+                        )
                         continue
 
-                    # A pair must be reasonably close in time.
-                    if abs(even["timestamp"] - odd["timestamp"]) > 10:
-                        # Keep the newer frame and wait for its counterpart.
-                        if even["timestamp"] < odd["timestamp"]:
-                            aircraft_cpr["even"] = None
-                        else:
-                            aircraft_cpr["odd"] = None
-                        continue
-
-                    # Decode the pair. Surface positions require a reference.
-                    lat, lon = pms.adsb.position(
-                        even["msg"],
-                        odd["msg"],
-                        even["timestamp"],
-                        odd["timestamp"],
-                        lat_ref=det_coords[0] if 5 <= tc <= 8 else None,
-                        lon_ref=det_coords[1] if 5 <= tc <= 8 else None
+                    altitude = (
+                        pms.adsb.altitude(msg)
+                        if 9 <= tc <= 18
+                        else None
                     )
-
-                    # Use the most recent frame's altitude and timestamp.
-                    latest = max(
-                        (even, odd),
-                        key=lambda item: item["timestamp"]
-                    )
-
-                    altitude = latest["altitude"]
-                    position_timestamp = latest["timestamp"]
 
                     if callsign:
                         supabase.table("position_data").insert({
@@ -649,37 +621,26 @@ class ADSBClient:
                             "lat": lat,
                             "lon": lon,
                             "altitude": altitude,
-                            "timestamp": position_timestamp,
+                            "timestamp": timestamp,
                             "pred": False
                         }).execute()
 
-                        # Mark both CPR frames processed after the insert.
                         self.mark_message(
-                            {"id": even["msg_id"]},
+                            message,
                             error=False,
-                            reason="Even CPR position processed"
-                        )
-                        self.mark_message(
-                            {"id": odd["msg_id"]},
-                            error=False,
-                            reason="Odd CPR position processed"
+                            reason="Position processed"
                         )
 
                     else:
-                        # Buffer one decoded position, not two raw CPR frames.
+                        # No callsign yet: buffer the decoded position.
                         self.buffers.setdefault(icao, []).append({
-                            "msg_id": even["msg_id"],
-                            "paired_msg_id": odd["msg_id"],
+                            "msg_id": message["id"],
                             "type": "position",
                             "lat": lat,
                             "lon": lon,
                             "altitude": altitude,
-                            "timestamp": position_timestamp
+                            "timestamp": timestamp
                         })
-
-                    # Clear the pair so it cannot be decoded repeatedly.
-                    aircraft_cpr["even"] = None
-                    aircraft_cpr["odd"] = None
 
                 # --- VELOCITY: TYPE CODE 19 ---  
                 elif tc == 19:

@@ -61,7 +61,11 @@ export default function InfoPanel({
   }
 
   const isPlane = selection.kind === "plane";
-  const title = isPlane ? selection.plane.icao : selection.airport.name;
+  const title = isPlane
+    ? selection.plane.callsign
+      ? `${selection.plane.icao} — ${selection.plane.callsign}`
+      : selection.plane.icao
+    : selection.airport.name;
   const [lat, lon] = isPlane
     ? selection.plane.routePoints[selection.plane.routePoints.length - 1]
     : [selection.airport.lat, selection.airport.lon];

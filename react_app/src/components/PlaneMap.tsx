@@ -13,6 +13,7 @@ import {
 import type { Airport, MapLayerVisibility, Plane, Selection } from "../types";
 import { findNearbyAirport } from "../lib/airports";
 import { airportIcon, planeIcon } from "./icons";
+import { getPlaneKey } from "../lib/planes";
 
 export interface FocusRequest {
   lat: number;
@@ -152,15 +153,18 @@ export default function PlaneMap({
             const last = p.routePoints[p.routePoints.length - 1];
             return (
               <Marker
-                key={`plane-${p.icao}`}
+                key={`plane-${getPlaneKey(p)}`}
                 position={last}
                 icon={planeIcon(
                   p.heading,
-                  selectedPlane !== null && selectedPlane.icao !== p.icao,
+                  selectedPlane !== null &&
+                    getPlaneKey(selectedPlane) !== getPlaneKey(p),
                 )}
                 eventHandlers={{ click: () => onSelectPlane(p) }}
               >
-                <Tooltip>{p.icao}</Tooltip>
+                <Tooltip>
+                  {p.callsign ? `${p.icao} — ${p.callsign}` : p.icao}
+                </Tooltip>
               </Marker>
             );
           })}
@@ -168,11 +172,14 @@ export default function PlaneMap({
 
       {layerVisibility.allRoutes &&
         plottable
-          .filter((p) => p.icao !== selectedPlane?.icao)
+          .filter(
+            (p) =>
+              !selectedPlane || getPlaneKey(p) !== getPlaneKey(selectedPlane),
+          )
           .map((p) => {
             const dimmed = selectedPlane !== null;
             return (
-              <Fragment key={`route-${p.icao}`}>
+              <Fragment key={`route-${getPlaneKey(p)}`}>
                 {layerVisibility.traveledRoute && (
                   <Polyline
                     positions={p.routePoints}

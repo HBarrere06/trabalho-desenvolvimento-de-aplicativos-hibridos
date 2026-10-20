@@ -9,6 +9,7 @@ import SearchBox from "./components/SearchBox";
 import InfoPanel from "./components/InfoPanel";
 import DateRangePicker from "./components/DateRangePicker";
 import MapLayerFilter from "./components/MapLayerFilter";
+import { getPlaneKey } from "./lib/planes";
 
 const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
   planes: true,
@@ -64,23 +65,37 @@ export default function App() {
   );
 
   // Only planes that have a position on the map are searchable.
-  const searchOptions = useMemo(
-    () =>
-      planes
-        .filter((p) => p.icao && p.routePoints.length > 0)
-        .map((p) => String(p.icao).toUpperCase()),
-    [planes],
-  );
+  const searchOptions = useMemo(() => {
+    const byKey = new Map<
+      string,
+      { key: string; icao: string; callsign: string; label: string }
+    >();
 
-  const handleSearchSelect = (icao: string) => {
-    const plane = planes.find((p) => String(p.icao).toUpperCase() === icao);
+    for (const plane of planes) {
+      if (!plane.icao || plane.routePoints.length === 0) continue;
+      const key = getPlaneKey(plane);
+      const callsign = plane.callsign.trim();
+      byKey.set(key, {
+        key,
+        icao: plane.icao,
+        callsign,
+        label: callsign ? `${plane.icao} — ${callsign}` : plane.icao,
+      });
+    }
+
+    return [...byKey.values()];
+  }, [planes]);
+
+  const handleSearchSelect = (key: string) => {
+    const plane = planes.find((p) => getPlaneKey(p) === key);
     if (plane) selectPlane(plane, 6);
   };
 
   // After a refresh, keep the selection only if that plane still exists (using the fresh data).
   const currentSelection = useMemo<Selection | null>(() => {
     if (selection?.kind !== "plane") return selection;
-    const fresh = planes.find((p) => p.icao === selection.plane.icao);
+    const selectedKey = getPlaneKey(selection.plane);
+    const fresh = planes.find((p) => getPlaneKey(p) === selectedKey);
     return fresh && fresh.routePoints.length > 0
       ? { kind: "plane", plane: fresh }
       : null;

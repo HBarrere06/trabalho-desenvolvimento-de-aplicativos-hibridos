@@ -8,6 +8,19 @@ import {
 
 const env = import.meta.env;
 
+/** Normalize identifiers so capitalization/whitespace cannot create distinct flights. */
+function normalizeIdentifier(value: string | null | undefined): string {
+  return (value ?? "").trim().toUpperCase();
+}
+
+/** Stable identity for a flight: ICAO24 + callsign, not ICAO24 alone. */
+export function getPlaneKey(plane: Pick<Plane, "icao" | "callsign">): string {
+  return JSON.stringify([
+    normalizeIdentifier(plane.icao),
+    normalizeIdentifier(plane.callsign),
+  ]);
+}
+
 async function loadFallbackPlanes(): Promise<RawPlane[]> {
   const path: string = env.VITE_PLANE_DATA_FILE || "/response.json";
   try {
@@ -88,8 +101,8 @@ export function normalizePlanes(
       const last = routePoints[routePoints.length - 1];
 
       return {
-        icao: p.icao,
-        callsign: p.callsign,
+        icao: normalizeIdentifier(p.icao),
+        callsign: normalizeIdentifier(p.callsign),
         time: route.length
           ? (route[route.length - 1].timestamp ?? null)
           : null,

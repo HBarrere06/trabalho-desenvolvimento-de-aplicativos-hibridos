@@ -1,9 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { dateTimeToUnixSeconds, formatTimestamp } from "./format";
 import { getHeading, getHeadingToAveragePoint, makeCircle } from "./geo";
-import { normalizePlanes } from "./planes";
+import { getPlaneKey, normalizePlanes } from "./planes";
 
 describe("ports match the Python implementation", () => {
+
+  it("normalizes ICAO/callsign and distinguishes flights by the pair", () => {
+    const planes = normalizePlanes([
+      {
+        icao: "abc123",
+        callsign: "test1",
+        trajectory: [{ timestamp: 1, lat: 0, lon: 0, pred: false }],
+      },
+      {
+        icao: "ABC123",
+        callsign: "TEST2",
+        trajectory: [{ timestamp: 1, lat: 1, lon: 1, pred: false }],
+      },
+    ]);
+
+    expect(planes[0].icao).toBe("ABC123");
+    expect(planes[0].callsign).toBe("TEST1");
+    expect(getPlaneKey(planes[0])).not.toBe(getPlaneKey(planes[1]));
+  });
   it("heading", () => {
     expect(getHeading([[-23.25, -46.7], [-22.9, -47.05]])).toBeCloseTo(317.31745127140067, 9);
     expect(getHeading([[-15.5, -47.6], [-15.84, -47.9]])).toBeCloseTo(220.30944884893216, 9);

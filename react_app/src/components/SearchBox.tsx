@@ -1,11 +1,18 @@
 import { useId, useMemo, useState } from "react";
 
-interface Props {
-  options: string[];
-  onSelect: (value: string) => void;
+export interface SearchOption {
+  key: string;
+  icao: string;
+  callsign: string;
+  label: string;
 }
 
-/** ICAO autocomplete: case-insensitive "contains" match, like the QCompleter. */
+interface Props {
+  options: SearchOption[];
+  onSelect: (key: string) => void;
+}
+
+/** Search by ICAO24 or callsign while keeping each ICAO/callsign pair distinct. */
 export default function SearchBox({ options, onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -14,13 +21,19 @@ export default function SearchBox({ options, onSelect }: Props) {
 
   const matches = useMemo(() => {
     const q = query.trim().toUpperCase();
-    return q ? options.filter((o) => o.includes(q)) : [];
+    return q
+      ? options.filter(
+          (option) =>
+            option.icao.includes(q) || option.callsign.includes(q) ||
+            option.label.toUpperCase().includes(q),
+        )
+      : [];
   }, [query, options]);
 
-  const choose = (value: string) => {
-    setQuery(value);
+  const choose = (option: SearchOption) => {
+    setQuery(option.label);
     setOpen(false);
-    onSelect(value);
+    onSelect(option.key);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -44,7 +57,7 @@ export default function SearchBox({ options, onSelect }: Props) {
       <input
         type="text"
         className="h-11 w-full rounded-lg border-2 border-gray-300 bg-white px-3 text-[15px] text-black outline-none focus:border-blue-500 focus:bg-gray-50"
-        placeholder="Digite o código ICAO"
+        placeholder="Digite o código ICAO ou callsign"
         value={query}
         role="combobox"
         aria-expanded={open && matches.length > 0}
@@ -65,20 +78,20 @@ export default function SearchBox({ options, onSelect }: Props) {
           id={listId}
           role="listbox"
         >
-          {matches.map((m, i) => (
+          {matches.map((option, i) => (
             <li
-              key={m}
+              key={option.key}
               role="option"
               aria-selected={i === active}
               className={`cursor-pointer px-3 py-1.5 ${i === active ? "bg-blue-50" : ""}`}
               // mousedown fires before the input's blur closes the list
               onMouseDown={(e) => {
                 e.preventDefault();
-                choose(m);
+                choose(option);
               }}
               onMouseEnter={() => setActive(i)}
             >
-              {m}
+              {option.label}
             </li>
           ))}
         </ul>
