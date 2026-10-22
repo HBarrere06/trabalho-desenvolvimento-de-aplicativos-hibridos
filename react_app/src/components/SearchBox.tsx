@@ -1,0 +1,101 @@
+import { useId, useMemo, useState } from "react";
+
+export interface SearchOption {
+  key: string;
+  icao: string;
+  callsign: string;
+  label: string;
+}
+
+interface Props {
+  options: SearchOption[];
+  onSelect: (key: string) => void;
+}
+
+/** Search by ICAO24 or callsign while keeping each ICAO/callsign pair distinct. */
+export default function SearchBox({ options, onSelect }: Props) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const listId = useId();
+
+  const matches = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return q
+      ? options.filter(
+          (option) =>
+            option.icao.includes(q) || option.callsign.includes(q) ||
+            option.label.toUpperCase().includes(q),
+        )
+      : [];
+  }, [query, options]);
+
+  const choose = (option: SearchOption) => {
+    setQuery(option.label);
+    setOpen(false);
+    onSelect(option.key);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpen(true);
+      setActive((i) => Math.min(i + 1, matches.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && open && matches[active]) {
+      e.preventDefault();
+      choose(matches[active]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative w-[300px] max-w-full">
+      <input
+        type="text"
+        className="h-11 w-full rounded-lg border-2 border-gray-300 bg-white px-3 text-[15px] text-black outline-none focus:border-blue-500 focus:bg-gray-50"
+        placeholder="Digite o código ICAO ou callsign"
+        value={query}
+        role="combobox"
+        aria-expanded={open && matches.length > 0}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setActive(0);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={onKeyDown}
+      />
+      {open && matches.length > 0 && (
+        <ul
+          className="absolute inset-x-0 top-[calc(100%+4px)] z-[1000] my-0 max-h-[260px] list-none overflow-y-auto rounded-lg border border-gray-300 bg-white py-1 shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+          id={listId}
+          role="listbox"
+        >
+          {matches.map((option, i) => (
+            <li
+              key={option.key}
+              role="option"
+              aria-selected={i === active}
+              className={`cursor-pointer px-3 py-1.5 ${i === active ? "bg-blue-50" : ""}`}
+              // mousedown fires before the input's blur closes the list
+              onMouseDown={(e) => {
+                e.preventDefault();
+                choose(option);
+              }}
+              onMouseEnter={() => setActive(i)}
+            >
+              {option.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
