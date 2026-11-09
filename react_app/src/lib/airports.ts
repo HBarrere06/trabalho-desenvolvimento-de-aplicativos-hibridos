@@ -12,10 +12,15 @@ interface CsvRow {
 }
 
 /** Loads airports.csv (OurAirports format) keeping only real airports. */
-export async function loadAirports(url = "/airports.csv"): Promise<Airport[]> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const text = await res.text();
+export async function loadAirports(url?: string): Promise<Airport[]> {
+  let text: string;
+  if (!url && window.adsbRescueData) {
+    text = await window.adsbRescueData.readAirports();
+  } else {
+    const res = await fetch(url ?? `${import.meta.env.BASE_URL}airports.csv`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    text = await res.text();
+  }
   const { data } = Papa.parse<CsvRow>(text, { header: true, skipEmptyLines: true });
 
   const airports: Airport[] = [];

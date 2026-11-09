@@ -181,27 +181,37 @@ export default function PlaneMap({
             return (
               <Fragment key={`route-${getPlaneKey(p)}`}>
                 {layerVisibility.traveledRoute && (
-                  <Polyline
-                    positions={p.routePoints}
-                    interactive={false}
-                    pathOptions={{
-                      color: "blue",
-                      weight: dimmed ? 2 : 3,
-                      opacity: dimmed ? 0.12 : 0.7,
-                    }}
-                  />
+                  p.routeSegments
+                    .filter((segment) => segment.length > 1)
+                    .map((segment, index) => (
+                      <Polyline
+                        key={`traveled-${index}`}
+                        positions={segment}
+                        interactive={false}
+                        pathOptions={{
+                          color: "blue",
+                          weight: dimmed ? 2 : 3,
+                          opacity: dimmed ? 0.12 : 0.7,
+                        }}
+                      />
+                    ))
                 )}
-                {layerVisibility.predictedRoute && p.predPoints.length > 0 && (
-                  <Polyline
-                    positions={p.predPoints}
-                    interactive={false}
-                    pathOptions={{
-                      color: "#6b7280",
-                      weight: dimmed ? 1.5 : 2,
-                      opacity: dimmed ? 0.12 : 0.8,
-                      dashArray: "6, 8",
-                    }}
-                  />
+                {layerVisibility.predictedRoute && (
+                  p.predSegments
+                    .filter((segment) => segment.length > 1)
+                    .map((segment, index) => (
+                      <Polyline
+                        key={`predicted-${index}`}
+                        positions={segment}
+                        interactive={false}
+                        pathOptions={{
+                          color: "#6b7280",
+                          weight: dimmed ? 1.5 : 2,
+                          opacity: dimmed ? 0.12 : 0.8,
+                          dashArray: "6, 8",
+                        }}
+                      />
+                    ))
                 )}
               </Fragment>
             );
@@ -212,22 +222,31 @@ export default function PlaneMap({
       {selectedPlane && (
         <>
           {layerVisibility.traveledRoute && (
-            <Polyline
-              positions={selectedPlane.routePoints}
-              pathOptions={{ color: "blue", weight: 5, opacity: 0.8 }}
-            />
+            selectedPlane.routeSegments
+              .filter((segment) => segment.length > 1)
+              .map((segment, index) => (
+                <Polyline
+                  key={`selected-traveled-${index}`}
+                  positions={segment}
+                  pathOptions={{ color: "blue", weight: 5, opacity: 0.8 }}
+                />
+              ))
           )}
-          {layerVisibility.predictedRoute &&
-            selectedPlane.predPoints.length > 0 && (
-              <Polyline
-                positions={selectedPlane.predPoints}
-                pathOptions={{
-                  color: "#6b7280",
-                  weight: 3,
-                  opacity: 0.9,
-                  dashArray: "6, 8",
-                }}
-              />
+          {layerVisibility.predictedRoute && (
+            selectedPlane.predSegments
+              .filter((segment) => segment.length > 1)
+              .map((segment, index) => (
+                <Polyline
+                  key={`selected-predicted-${index}`}
+                  positions={segment}
+                  pathOptions={{
+                    color: "#6b7280",
+                    weight: 3,
+                    opacity: 0.9,
+                    dashArray: "6, 8",
+                  }}
+                />
+              ))
             )}
           {layerVisibility.searchAreas && selectedPlane.searchArea && (
             <Polygon

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Airport, Plane } from "../types";
 import { loadAirports } from "../lib/airports";
-import { loadPlanes } from "../lib/planes";
+import { loadPlanesFromFallback } from "../lib/planes";
+import { writeCachedPlanes } from "../lib/planeCache";
 
 export function useAirports() {
   const [airports, setAirports] = useState<Airport[]>([]);
@@ -20,22 +21,29 @@ export function useAirports() {
   return { airports, error };
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 export function usePlanes(startDate = "", endDate = "") {
   const [planes, setPlanes] = useState<Plane[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [lastQueriedAt, setLastQueriedAt] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setPlanes(
-        await loadPlanes(
-          startDate || undefined,
-          endDate || undefined,
-        ),
+      const demoData = await loadPlanesFromFallback(
+        startDate || undefined,
+        endDate || undefined,
       );
-      setLastUpdatedAt(new Date());
+      setPlanes(demoData.planes);
+      setLastQueriedAt(demoData.queriedAt);
+      setError(null);
+      await writeCachedPlanes(demoData.planes, "demo");
+    } catch (refreshError) {
+      setError(getErrorMessage(refreshError));
     } finally {
       setLoading(false);
     }
@@ -45,5 +53,5 @@ export function usePlanes(startDate = "", endDate = "") {
     void refresh();
   }, [refresh]);
 
-  return { planes, loading, refresh, lastUpdatedAt };
+  return { planes, loading, refresh, lastQueriedAt, error };
 }

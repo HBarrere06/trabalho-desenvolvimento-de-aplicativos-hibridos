@@ -12,3 +12,4 @@ test_flight_plots
 *.pdf
 *.save
 data
+node_modules

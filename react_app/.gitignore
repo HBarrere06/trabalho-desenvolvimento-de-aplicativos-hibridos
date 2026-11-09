@@ -2,7 +2,8 @@ node_modules
 dist
 .env
 .env.local
-package-lock.json
+!package-lock.json
+!vite.config.ts
 tsconfig*
 vite.config.ts
 response.json

@@ -10,6 +10,7 @@ import InfoPanel from "./components/InfoPanel";
 import DateRangePicker from "./components/DateRangePicker";
 import MapLayerFilter from "./components/MapLayerFilter";
 import { getPlaneKey } from "./lib/planes";
+import { formatElapsedQuery } from "./lib/format";
 
 const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
   planes: true,
@@ -23,10 +24,13 @@ const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
 export default function App() {
   const [startDateTime, setStartDateTime] = useState("");
   const [endDateTime, setEndDateTime] = useState("");
-  const { planes, loading, refresh, lastUpdatedAt } = usePlanes(
-    startDateTime,
-    endDateTime,
-  );
+  const {
+    planes,
+    loading,
+    refresh,
+    lastQueriedAt,
+    error: planesError,
+  } = usePlanes(startDateTime, endDateTime);
   const { airports, error: airportsError } = useAirports();
   const [selection, setSelection] = useState<Selection | null>(null);
   const [layerVisibility, setLayerVisibility] = useState(DEFAULT_LAYER_VISIBILITY);
@@ -34,12 +38,12 @@ export default function App() {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!lastUpdatedAt) return;
+    if (!lastQueriedAt) return;
 
     setNow(Date.now());
     const interval = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(interval);
-  }, [lastUpdatedAt]);
+  }, [lastQueriedAt]);
 
   const requestFocus = useCallback(
     (lat: number, lon: number, minZoom?: number) =>
@@ -100,14 +104,16 @@ export default function App() {
       ? { kind: "plane", plane: fresh }
       : null;
   }, [selection, planes]);
-  const minutesSinceUpdate = lastUpdatedAt
-    ? Math.floor((now - lastUpdatedAt.getTime()) / 60_000)
-    : null;
+  const queryStatus = loading
+    ? "Consultando dados..."
+    : lastQueriedAt === null
+      ? "Horário da última consulta indisponível"
+      : formatElapsedQuery(lastQueriedAt, now);
 
   return (
     <div className="flex h-screen flex-col gap-2.5 bg-gray-200 p-2.5 font-[Arial,sans-serif] text-gray-800">
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5 max-[800px]:grid-cols-1">
-        <div className="flex items-center gap-2.5 max-[800px]:justify-center">
+        <div className="flex flex-wrap items-center gap-2.5 max-[800px]:justify-center">
           <button
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white text-[#0d47ff] hover:bg-gray-100 active:bg-gray-200 disabled:cursor-default disabled:bg-gray-100"
             onClick={refresh}
@@ -124,12 +130,13 @@ export default function App() {
             className="whitespace-nowrap text-sm text-gray-600 max-[800px]:text-xs"
             aria-live="polite"
           >
-            {minutesSinceUpdate === null
-              ? "Aguardando atualização"
-              : minutesSinceUpdate === 0
-                ? "Atualizado agora"
-                : `Atualizado há ${minutesSinceUpdate} ${minutesSinceUpdate === 1 ? "minuto" : "minutos"}`}
+            {queryStatus}
           </span>
+          {planesError && (
+            <span className="text-sm text-amber-800" role="status">
+              {planesError}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2.5 justify-self-center">

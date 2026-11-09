@@ -20,7 +20,9 @@ export interface Plane {
   callsign: string;
   time: number | string | null;
   routePoints: LatLon[];
+  routeSegments: LatLon[][];
   predPoints: LatLon[];
+  predSegments: LatLon[][];
   searchArea: LatLon[] | null;
   heading: number;
 }

@@ -18,6 +18,17 @@ export function formatTimestamp(value: unknown): string {
   );
 }
 
+export function formatElapsedQuery(date: Date, now: number): string {
+  const minutes = Math.max(0, Math.floor((now - date.getTime()) / 60_000));
+  if (minutes === 0) return "Última consulta feita há menos de 1 minuto";
+  if (minutes < 60) {
+    return `Última consulta feita há ${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  return `Última consulta feita há ${hours} ${hours === 1 ? "hora" : "horas"}`;
+}
+
 /** Convert a YYYY-MM-DD date to a Unix timestamp in seconds (UTC). */
 export function dateToUnixSeconds(date: string): number {
   const [year, month, day] = date.split("-").map(Number);

@@ -50,7 +50,7 @@ export default function InfoPanel({
   onClearSelection,
 }: Props) {
   if (refreshing) {
-    return <aside className={panelClassName}>Atualizando dados da API...</aside>;
+    return <aside className={panelClassName}>Atualizando os dados...</aside>;
   }
   if (!selection) {
     return (
@@ -108,6 +108,18 @@ export default function InfoPanel({
             icon={<Clock3 className="size-6" />}
           />
         )}
+        {isPlane &&
+          !selection.plane.routeSegments.some(
+            (segment) => segment.length > 1,
+          ) && (
+            <div
+              className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+              role="status"
+            >
+              Não há posições consecutivas suficientes nos dados para traçar
+              uma rota desta aeronave.
+            </div>
+          )}
         <DetailRow
           label="Aeroporto de origem"
           value={nearby ? nearby.name : "N/A"}
